@@ -1,0 +1,30 @@
+backend/.flaskenv
+instance/gaming_cafe.db
+# Virtual environment
+venv/
+venv*/
+.Python
+bin/
+include/
+lib/
+lib64/
+pip-selfcheck.json
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.pyc
+
+# Environment variables
+.env
+
+# Database
+gaming_cafe.db
+
+# Compiled Python files
+*.pyc
+
+# Dependency directories
+node_modules/
+/dist/

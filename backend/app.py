@@ -1,11 +1,28 @@
-from . import app, db
-from .models import User  # Import models before creating tables
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+import os
 
-print("Creating database tables...")
+app = Flask(__name__)
+CORS(app)
+
+app.config['SECRET_KEY'] = 'your_secret_key'  # Change this! Use an environment variable in production
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///gamers.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 30 * 60  # 30 minutes (in seconds)
+
+db = SQLAlchemy(app)
+jwt = JWTManager(app)
+
+# Create the database tables within the app context
 with app.app_context():
-    db.drop_all()  # Drop all existing tables
-    db.create_all()  # Create tables with current schema
-    print("Database tables created successfully!")
+    # Import models (after db is defined)
+    from models import User, Friend
+    db.create_all()
 
-if __name__ == '__main__':
+# Import and register routes
+import routes
+
+if __name__ == "__main__":
     app.run(debug=True)

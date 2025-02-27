@@ -18,7 +18,7 @@ jwt = JWTManager(app)
 # Create the database tables within the app context
 with app.app_context():
     # Import models (after db is defined)
-    from models import User, Friend
+    from models import User, Machine, Session, Transaction  # Added missing imports
     db.create_all()
 
 # Import and register routes

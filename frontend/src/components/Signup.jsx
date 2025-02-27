@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Box,
@@ -14,7 +14,10 @@ import {
   AlertIcon,
   Container,
   FormErrorMessage,
-  useToast
+  useToast,
+  RadioGroup,
+  Radio,
+  Stack
 } from '@chakra-ui/react';
 
 const Signup = () => {
@@ -22,10 +25,12 @@ const Signup = () => {
     username: '',
     password: '',
     confirmPassword: '',
+    gender: 'male', // Default to male
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup, error } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
 
   const handleChange = (e) => {
@@ -33,6 +38,13 @@ const Signup = () => {
     setFormData({
       ...formData,
       [name]: value,
+    });
+  };
+
+  const handleGenderChange = (value) => {
+    setFormData({
+      ...formData,
+      gender: value
     });
   };
 
@@ -70,10 +82,7 @@ const Signup = () => {
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...userData } = formData;
       
-      await signup({
-        ...userData,
-        is_admin: false // Regular user by default
-      });
+      await signup(userData);
       
       toast({
         title: 'Account created',
@@ -141,6 +150,17 @@ const Signup = () => {
                   onChange={handleChange}
                 />
                 <FormErrorMessage>{formErrors.confirmPassword}</FormErrorMessage>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Gender</FormLabel>
+                <RadioGroup onChange={handleGenderChange} value={formData.gender}>
+                  <Stack direction="row">
+                    <Radio value="male">Male</Radio>
+                    <Radio value="female">Female</Radio>
+                    <Radio value="other">Other</Radio>
+                  </Stack>
+                </RadioGroup>
               </FormControl>
               
               <Button

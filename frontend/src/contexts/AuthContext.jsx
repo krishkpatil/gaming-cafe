@@ -1,7 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext(null);
+const API_URL = 'http://127.0.0.1:5000/api';
+
+const AuthContext = createContext();
+
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,13 +13,20 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Check if user is logged in on app load
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      try {
+        const parsedUser = JSON.parse(userData);
+        console.log("User data from localStorage:", parsedUser);
+        setUser(parsedUser);
+      } catch (err) {
+        console.error('Error parsing user data from localStorage', err);
+        logout();
+      }
     }
     
     setLoading(false);
@@ -23,77 +34,87 @@ export const AuthProvider = ({ children }) => {
 
   // Login function
   const login = async (username, password) => {
-    setLoading(true);
     setError(null);
     
     try {
-      // Create basic auth header
-      const credentials = btoa(`${username}:${password}`);
-      
-      const response = await fetch('http://127.0.0.1:5000/login', {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
-          'Authorization': `Basic ${credentials}`
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
-      }
-      
       const data = await response.json();
+      
+      if (!response.ok) {
+        const error = data.message || 'Login failed';
+        setError(error);
+        throw new Error(error);
+      }
       
       // Store token and user data
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
+      // Update state
       setUser(data.user);
-      navigate('/home');
+      
+      // Redirect to home page
+      navigate('/');
+      
       return data;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      throw err;
     }
   };
 
-  // Signup function
-  const signup = async (userData) => {
-    setLoading(true);
-    setError(null);
+// Signup function
+const signup = async (userData) => {
+  setError(null);
+  
+  try {
+    const response = await fetch(`${API_URL}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: userData.username,
+        password: userData.password,
+        gender: userData.gender || 'male' // Include gender, default to male
+      })
+    });
     
-    try {
-      const response = await fetch('http://127.0.0.1:5000/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Signup failed');
-      }
-      
-      const data = await response.json();
-      navigate('/login');
-      return data;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      const error = data.message || 'Signup failed';
+      setError(error);
+      throw new Error(error);
     }
-  };
+    
+    // Redirect to login page
+    navigate('/login');
+    
+    return data;
+  } catch (err) {
+    setError(err.message);
+    throw err;
+  }
+};
 
   // Logout function
   const logout = () => {
+    // Clear local storage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Update state
     setUser(null);
+    
+    // Redirect to login page
     navigate('/login');
   };
 
@@ -102,26 +123,34 @@ export const AuthProvider = ({ children }) => {
     return !!user;
   };
 
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      error, 
-      login, 
-      signup, 
-      logout, 
-      isAuthenticated 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // Check if user is admin - with extra type checking and debugging
+  const isAdmin = () => {
+    
+    if (!user) {
+      console.log("No user is logged in");
+      return false;
+    }
+    
+    // Handle different types of is_admin values
+    if (typeof user.is_admin === 'string') {
+      return user.is_admin.toLowerCase() === 'true';
+    }
+    
+    return Boolean(user.is_admin);
+  };
+
+  const value = {
+    user,
+    loading,
+    error,
+    login,
+    signup,
+    logout,
+    isAuthenticated,
+    isAdmin
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export default AuthContext;

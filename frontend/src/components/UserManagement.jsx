@@ -35,7 +35,8 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   ButtonGroup,
-  HStack
+  HStack,
+  Avatar
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon } from '@chakra-ui/icons';
 import { getAllUsers, addUserBalance } from '../services/userService';
@@ -76,7 +77,21 @@ const UserManagement = () => {
 
   // Handle user creation
   const handleUserCreated = (newUser) => {
-    setUsers([...users, newUser]);
+    // Safely check if newUser has all required properties
+    if (newUser && typeof newUser === 'object') {
+      // Ensure balance is a number (default to 0 if not provided)
+      const userWithDefaults = {
+        ...newUser,
+        balance: newUser.balance || 0
+      };
+      setUsers(prevUsers => [...prevUsers, userWithDefaults]);
+      // Optionally refresh the full user list to ensure consistent data
+      fetchUsers();
+    } else {
+      console.error("Received invalid user data:", newUser);
+      // Fallback: refresh the user list to get the updated data
+      fetchUsers();
+    }
   };
 
   // Open balance modal for a user
@@ -100,15 +115,20 @@ const UserManagement = () => {
     }
 
     try {
-      const response = await addUserBalance({
-        user_id: selectedUser.id,
+      const response = await addUserBalance(selectedUser.id, {
         amount: balance
       });
 
-      // Update user in the list
-      setUsers(users.map(u => 
-        u.id === response.user.id ? response.user : u
-      ));
+      // Check if response has the expected structure
+      if (response && response.user) {
+        // Update user in the list
+        setUsers(users.map(u => 
+          u.id === response.user.id ? response.user : u
+        ));
+      } else {
+        // Fallback: refresh the whole user list
+        fetchUsers();
+      }
 
       toast({
         title: 'Balance added',
@@ -168,7 +188,7 @@ const UserManagement = () => {
             <Thead>
               <Tr>
                 <Th>ID</Th>
-                <Th>Username</Th>
+                <Th>User</Th>
                 <Th>Role</Th>
                 <Th isNumeric>Balance</Th>
                 <Th>Actions</Th>
@@ -183,9 +203,16 @@ const UserManagement = () => {
                 users.map(user => (
                   <Tr key={user.id}>
                     <Td>{user.id}</Td>
-                    <Td>{user.username}</Td>
+                    <Td>
+                      <Flex alignItems="center">
+                        {user.img_url && (
+                          <Avatar size="sm" src={user.img_url} mr={2} />
+                        )}
+                        {user.username}
+                      </Flex>
+                    </Td>
                     <Td>{user.is_admin ? 'Admin' : 'User'}</Td>
-                    <Td isNumeric>${user.balance.toFixed(2)}</Td>
+                    <Td isNumeric>${(user.balance || 0).toFixed(2)}</Td>
                     <Td>
                       <Button
                         size="sm"
@@ -221,11 +248,16 @@ const UserManagement = () => {
           <ModalBody>
             {selectedUser && (
               <>
+                <Flex alignItems="center" mb={4}>
+                  {selectedUser.img_url && (
+                    <Avatar size="md" src={selectedUser.img_url} mr={3} />
+                  )}
+                  <Text>
+                    Adding funds to <strong>{selectedUser.username}</strong>'s account
+                  </Text>
+                </Flex>
                 <Text mb={4}>
-                  Adding funds to <strong>{selectedUser.username}</strong>'s account
-                </Text>
-                <Text mb={4}>
-                  Current balance: <strong>${selectedUser.balance.toFixed(2)}</strong>
+                  Current balance: <strong>${(selectedUser.balance || 0).toFixed(2)}</strong>
                 </Text>
                 
                 <FormControl mb={4}>

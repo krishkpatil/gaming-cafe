@@ -65,8 +65,8 @@ export const createUser = async (userData) => {
 };
 
 // Add balance to user
-export const addUserBalance = async (balanceData) => {
-  const response = await fetch(`${API_URL}/users/${balanceData.user_id}/add-balance`, {
+export const addUserBalance = async (userId, balanceData) => {
+  const response = await fetch(`${API_URL}/users/${userId}/add-balance`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

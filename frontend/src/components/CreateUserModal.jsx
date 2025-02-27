@@ -14,7 +14,8 @@ import {
   Checkbox,
   VStack,
   useToast,
-  FormErrorMessage
+  FormErrorMessage,
+  Select
 } from '@chakra-ui/react';
 import { createUser } from '../services/userService';
 
@@ -23,7 +24,8 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
     username: '',
     password: '',
     confirmPassword: '',
-    isAdmin: false
+    isAdmin: true, // Set to true by default since all users are admins
+    gender: 'male' // Default gender
   };
   
   const [formData, setFormData] = useState(initialState);
@@ -74,7 +76,8 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
       const result = await createUser({
         username: userData.username,
         password: userData.password,
-        is_admin: userData.isAdmin
+        is_admin: userData.isAdmin,
+        gender: userData.gender
       });
       
       toast({
@@ -91,9 +94,13 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
       // Close modal
       onClose();
       
+      // Check the structure of the response and extract the user object
+      // Based on your API, this could be result.user, result or another structure
+      const newUser = result.user || result;
+      
       // Notify parent component to update the list
-      if (onUserCreated) {
-        onUserCreated(result.user);
+      if (onUserCreated && newUser) {
+        onUserCreated(newUser);
       }
     } catch (error) {
       toast({
@@ -150,6 +157,19 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
                 onChange={handleChange}
               />
               <FormErrorMessage>{formErrors.confirmPassword}</FormErrorMessage>
+            </FormControl>
+            
+            <FormControl>
+              <FormLabel>Gender</FormLabel>
+              <Select
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </Select>
             </FormControl>
             
             <FormControl>

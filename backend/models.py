@@ -1,6 +1,7 @@
 from app import db
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from pytz import timezone
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,6 +62,33 @@ class Session(db.Model):
     machine = relationship("Machine", back_populates="sessions")
     
     def to_json(self):
+        # Create local timezone object for Asia/Kolkata (Indian Standard Time)
+        local_tz = timezone('Asia/Kolkata')
+        
+        # Convert start_time to local timezone
+        local_start_time = None
+        if self.start_time:
+            # Make sure we have a timezone-aware datetime (add UTC if naive)
+            if self.start_time.tzinfo is None:
+                from datetime import timezone as dt_timezone
+                start_time_utc = self.start_time.replace(tzinfo=dt_timezone.utc)
+            else:
+                start_time_utc = self.start_time
+            
+            local_start_time = start_time_utc.astimezone(local_tz)
+        
+        # Convert end_time to local timezone
+        local_end_time = None
+        if self.end_time:
+            # Make sure we have a timezone-aware datetime (add UTC if naive)
+            if self.end_time.tzinfo is None:
+                from datetime import timezone as dt_timezone
+                end_time_utc = self.end_time.replace(tzinfo=dt_timezone.utc)
+            else:
+                end_time_utc = self.end_time
+            
+            local_end_time = end_time_utc.astimezone(local_tz)
+        
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -70,8 +98,8 @@ class Session(db.Model):
             "machine_name": self.machine.name if self.machine else None,
             "machine_type": self.machine.machine_type if self.machine else None,
             "hourly_rate": self.machine.hourly_rate if self.machine else None,
-            "start_time": self.start_time.isoformat() if self.start_time else None,
-            "end_time": self.end_time.isoformat() if self.end_time else None,
+            "start_time": local_start_time.isoformat() if local_start_time else None,
+            "end_time": local_end_time.isoformat() if local_end_time else None,
             "duration": self.duration,
             "amount_charged": self.amount_charged,
             "is_active": self.is_active

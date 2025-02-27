@@ -336,12 +336,54 @@ def start_session():
         # Check if user has enough balance
         if user.balance <= 0:
             return jsonify({'message': 'User has insufficient balance'}), 400
+        
+        # Check if user already has an active session
+        existing_session = Session.query.filter_by(
+            user_id=user_id,
+            is_active=True
+        ).first()
+        
+        if existing_session:
+            # End the existing session
+            end_time = datetime.utcnow()
+            existing_session.end_time = end_time
+            existing_session.is_active = False
             
-        # Create new session
+            # Calculate duration in hours (rounded up to nearest 15 minutes)
+            duration_seconds = (end_time - existing_session.start_time).total_seconds()
+            duration_hours = duration_seconds / 3600
+            
+            # Round up to nearest 15 minutes (0.25 hours)
+            duration_hours = math.ceil(duration_hours * 4) / 4
+            existing_session.duration = duration_hours
+            
+            # Calculate charge
+            amount_charged = duration_hours * machine.hourly_rate
+            
+            # Make sure we don't charge more than the user's balance
+            amount_charged = min(amount_charged, user.balance)
+            existing_session.amount_charged = amount_charged
+            
+            # Update user balance
+            user.balance -= amount_charged
+            
+            # Create transaction record
+            transaction = Transaction(
+                user_id=user.id,
+                amount=-amount_charged,
+                transaction_type='session_charge',
+                description=f'Session charge for {machine.name}',
+                session_id=existing_session.id
+            )
+            
+            db.session.add(transaction)
+            db.session.commit()
+        
+        # Create new session with fresh start time
         new_session = Session(
             user_id=user_id,
             machine_id=machine_id,
-            start_time=datetime.utcnow(),
+            start_time=datetime.utcnow(),  # Fresh timestamp
             is_active=True
         )
         
@@ -350,6 +392,9 @@ def start_session():
         
         db.session.add(new_session)
         db.session.commit()
+        
+        # Force refresh the session from database to ensure timestamp is correct
+        db.session.refresh(new_session)
         
         return jsonify({
             'message': 'Session started successfully',

@@ -20,7 +20,11 @@ import {
   Badge,
   Tag,
   IconButton,
-  HStack
+  HStack,
+  Progress,
+  Card,
+  CardHeader,
+  CardBody
 } from '@chakra-ui/react';
 import { AddIcon, TimeIcon, RepeatIcon } from '@chakra-ui/icons';
 import { getAllSessions, getActiveSessions, endSession } from '../services/sessionService';
@@ -35,6 +39,7 @@ const SessionManagement = () => {
   const { user } = useAuth();
   const toast = useToast();
   const timerRef = useRef(null);
+  const refreshTimerRef = useRef(null);
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -45,10 +50,18 @@ const SessionManagement = () => {
       fetchActiveSessions(false); // Don't show loading spinner for refreshes
     }, 30000);
     
-    // Clean up timer on component unmount
+    // Set up timer to update time displays every minute without API call
+    refreshTimerRef.current = setInterval(() => {
+      setSessions(prevSessions => [...prevSessions]);
+    }, 60000);
+    
+    // Clean up timers on component unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
       }
     };
   }, []);
@@ -78,10 +91,17 @@ const SessionManagement = () => {
     setSessions([...sessions, newSession]);
   };
 
-  // Calculate time remaining for active sessions
-  const calculateTimeRemaining = (session) => {
+  // Calculate time remaining data for active sessions
+  const calculateTimeRemainingData = (session) => {
     if (!session || !session.start_time || !session.hourly_rate || session.hourly_rate <= 0) {
-      return "0h 0m";
+      return {
+        hours: 0,
+        minutes: 0,
+        totalMinutes: 0,
+        formatted: "00:00",
+        percentage: 0,
+        status: "expired"
+      };
     }
     
     // Get user balance from session
@@ -104,8 +124,34 @@ const SessionManagement = () => {
     // Convert to hours and minutes
     const hours = Math.floor(remainingHours);
     const minutes = Math.floor((remainingHours - hours) * 60);
+    const totalMinutes = hours * 60 + minutes;
     
-    return `${hours}h ${minutes}m`;
+    // Format as HH:MM
+    const formattedHours = String(hours).padStart(2, '0');
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formatted = `${formattedHours}:${formattedMinutes}`;
+    
+    // Calculate percentage for progress bar
+    // Assuming max session time is 8 hours (480 minutes)
+    const maxSessionMinutes = 480;
+    const percentage = Math.min(100, (totalMinutes / maxSessionMinutes) * 100);
+    
+    // Determine status for color coding
+    let status = "normal";
+    if (totalMinutes <= 15) {
+      status = "critical";
+    } else if (totalMinutes <= 30) {
+      status = "warning";
+    }
+    
+    return {
+      hours,
+      minutes,
+      totalMinutes,
+      formatted,
+      percentage,
+      status
+    };
   };
   
   // Calculate estimated cost for active sessions
@@ -165,6 +211,18 @@ const SessionManagement = () => {
     });
   };
 
+  // Get progress color based on remaining time status
+  const getProgressColor = (status) => {
+    switch (status) {
+      case "critical":
+        return "red";
+      case "warning":
+        return "orange";
+      default:
+        return "blue";
+    }
+  };
+
   return (
     <Container maxW="container.xl" py={8}>
       {/* Header section */}
@@ -213,7 +271,7 @@ const SessionManagement = () => {
                 <Th>Machine</Th>
                 <Th>Started At</Th>
                 <Th>Time Remaining</Th>
-                <Th>Est. Cost So Far</Th>
+                <Th>Status</Th>
                 <Th>Actions</Th>
               </Tr>
             </Thead>
@@ -223,35 +281,53 @@ const SessionManagement = () => {
                   <Td colSpan={7} textAlign="center">No active sessions found</Td>
                 </Tr>
               ) : (
-                sessions.map(session => (
-                  <Tr key={session.id}>
-                    <Td>{session.id}</Td>
-                    <Td>{session.username}</Td>
-                    <Td>
-                      <HStack>
-                        <Text>{session.machine_name}</Text>
-                        <Tag colorScheme="blue" size="sm">{session.machine_type}</Tag>
-                      </HStack>
-                    </Td>
-                    <Td>{new Date(session.start_time).toLocaleTimeString()}</Td>
-                    <Td>
-                      <HStack>
-                        <TimeIcon />
-                        <Text>{calculateTimeRemaining(session)}</Text>
-                      </HStack>
-                    </Td>
-                    <Td>${calculateEstimatedCost(session.start_time, session.hourly_rate)}</Td>
-                    <Td>
-                      <Button
-                        colorScheme="red"
-                        size="sm"
-                        onClick={() => handleEndSession(session.id)}
-                      >
-                        End Session
-                      </Button>
-                    </Td>
-                  </Tr>
-                ))
+                sessions.map(session => {
+                  const timeData = calculateTimeRemainingData(session);
+                  return (
+                    <Tr key={session.id}>
+                      <Td>{session.id}</Td>
+                      <Td>{session.username}</Td>
+                      <Td>
+                        <HStack>
+                          <Text>{session.machine_name}</Text>
+                          <Tag colorScheme="blue" size="sm">{session.machine_type}</Tag>
+                        </HStack>
+                      </Td>
+                      <Td>{new Date(session.start_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</Td>
+                      <Td>
+                        <Box>
+                          <HStack mb={1}>
+                            <TimeIcon />
+                            <Text fontWeight="bold" color={timeData.status === "critical" ? "red.500" : undefined}>
+                              {timeData.formatted} left
+                            </Text>
+                          </HStack>
+                          <Progress 
+                            value={timeData.percentage} 
+                            size="sm" 
+                            colorScheme={getProgressColor(timeData.status)}
+                          />
+                        </Box>
+                      </Td>
+                      <Td>
+
+                                  <Badge colorScheme={session.is_active ? 'green' : 'gray'} ml={2}>
+                                      {session.is_active ? 'ACTIVE' : 'ENDED'}
+                                  </Badge>
+
+                      </Td>
+                      <Td>
+                        <Button
+                          colorScheme="red"
+                          size="sm"
+                          onClick={() => handleEndSession(session.id)}
+                        >
+                          End Session
+                        </Button>
+                      </Td>
+                    </Tr>
+                  );
+                })
               )}
             </Tbody>
           </Table>

@@ -1,6 +1,7 @@
 backend/.flaskenv
 instance/gaming_cafe.db
 # Virtual environment
+.venv/
 venv/
 venv*/
 .Python

@@ -24,7 +24,7 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
     username: '',
     password: '',
     confirmPassword: '',
-    isAdmin: true, // Set to true by default since all users are admins
+    isAdmin: false, // Default to regular user when creating from admin panel
     gender: 'male' // Default gender
   };
   

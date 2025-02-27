@@ -59,6 +59,10 @@ def signup():
         password = data.get('password')
         gender = data.get('gender', 'male')  # Default to male if not provided
         
+        # Check if is_admin is explicitly set in the request
+        is_admin_specified = 'is_admin' in data
+        is_admin = data.get('is_admin', True)
+        
         if not username or not password:
             return jsonify({'message': 'Username and password are required', 'success': False}), 400
             
@@ -69,18 +73,17 @@ def signup():
         hashed_password = generate_password_hash(password)
         
         # Generate avatar URL based on gender
+        img_url = None
         if gender == "male":
             img_url = f"https://avatar.iran.liara.run/public/boy?username={username}"
         elif gender == "female":
             img_url = f"https://avatar.iran.liara.run/public/girl?username={username}"
-        else:
-            img_url = None
         
-        # Make all users admins by default
+        # Create the user with the appropriate admin status
         new_user = User(
             username=username, 
             password=hashed_password, 
-            is_admin=True,
+            is_admin=is_admin,
             gender=gender,
             img_url=img_url
         )
@@ -97,6 +100,7 @@ def signup():
                 'gender': new_user.gender,
                 'img_url': new_user.img_url
             },
+            'status': 'ACTIVE',  # Add status here
             'success': True
         }), 201
         
@@ -535,3 +539,53 @@ def get_transactions():
         'transactions': [transaction.to_json() for transaction in transactions],
         'count': len(transactions)
     })
+
+@app.route('/api/users/create', methods=['POST'])
+@jwt_required()
+@admin_required()
+def admin_create_user():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        gender = data.get('gender', 'male')
+        is_admin = data.get('is_admin', False)  # Default to regular user when created by admin
+        
+        if not username or not password:
+            return jsonify({'message': 'Username and password are required'}), 400
+            
+        if User.query.filter_by(username=username).first():
+            return jsonify({'message': 'Username already exists'}), 400
+            
+        # Hash the password
+        hashed_password = generate_password_hash(password)
+        
+        # Generate avatar URL based on gender
+        img_url = None
+        if gender == "male":
+            img_url = f"https://avatar.iran.liara.run/public/boy?username={username}"
+        elif gender == "female":
+            img_url = f"https://avatar.iran.liara.run/public/girl?username={username}"
+        
+        # Create the user with specified admin status
+        new_user = User(
+            username=username, 
+            password=hashed_password, 
+            is_admin=is_admin,
+            gender=gender,
+            img_url=img_url,
+            balance=0.0
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'User created successfully',
+            'user': new_user.to_json(),
+            'status': 'ACTIVE'  # Add status here
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error creating user: {str(e)}'}), 500

@@ -27,9 +27,12 @@ import {
   CardBody,
   Progress,
   Button,
-  IconButton
+  IconButton,
+  VStack,
+  Link
 } from '@chakra-ui/react';
-import { TimeIcon, RepeatIcon } from '@chakra-ui/icons';
+import { TimeIcon, RepeatIcon, ExternalLinkIcon } from '@chakra-ui/icons';
+import { Link as RouterLink } from 'react-router-dom';
 import { getDashboardStats } from '../services/dashboardService';
 import { endSession } from '../services/sessionService';
 import { useAuth } from '../contexts/AuthContext';
@@ -213,6 +216,23 @@ const Dashboard = () => {
     }
   };
 
+  // Filter sessions for regular users
+  const getFilteredSessions = () => {
+    if (!user || !stats.recent_sessions) return [];
+    
+    if (isAdmin()) {
+      // Admin sees all sessions
+      return stats.recent_sessions;
+    } else {
+      // Regular users only see their own sessions
+      return stats.recent_sessions.filter(session => 
+        session.user_id === user.id
+      );
+    }
+  };
+
+  const filteredSessions = getFilteredSessions();
+
   return (
     <Container maxW="container.xl" py={8}>
       {/* Header section */}
@@ -348,15 +368,14 @@ const Dashboard = () => {
             </>
           )}
 
-          {/* User Dashboard - for both admin and regular users */}
-          {/* Regular user dashboard */}
+          {/* User Dashboard - for regular users */}
           {!isAdmin() && (
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
               <Card>
                 <CardHeader pb={0}>
                   <Stat>
                     <StatLabel>Current Balance</StatLabel>
-                    <StatNumber>${stats.user_stats.balance?.toFixed(2) || '0.00'}</StatNumber>
+                    <StatNumber>${(user?.balance || 0).toFixed(2)}</StatNumber>
                   </Stat>
                 </CardHeader>
                 <CardBody>
@@ -367,8 +386,10 @@ const Dashboard = () => {
               <Card>
                 <CardHeader pb={0}>
                   <Stat>
-                    <StatLabel>Active Sessions</StatLabel>
-                    <StatNumber>{stats.session_stats.active_sessions}</StatNumber>
+                    <StatLabel>My Active Sessions</StatLabel>
+                    <StatNumber>{
+                      filteredSessions.filter(session => session.is_active && session.user_id === user?.id).length
+                    }</StatNumber>
                   </Stat>
                 </CardHeader>
                 <CardBody>
@@ -378,17 +399,24 @@ const Dashboard = () => {
             </SimpleGrid>
           )}
           
-          {/* Recent sessions - for both user types */}
+          {/* Recent sessions - filtered based on user role */}
           <Card>
             <CardHeader>
-              <Heading size="md">Recent Sessions</Heading>
+              <Flex justifyContent="space-between" alignItems="center">
+                <Heading size="md">{isAdmin() ? 'Recent Sessions' : 'My Sessions'}</Heading>
+                {!isAdmin() && (
+                  <Link as={RouterLink} to="/profile" color="blue.500">
+                    View Profile <ExternalLinkIcon mx="2px" />
+                  </Link>
+                )}
+              </Flex>
             </CardHeader>
             <CardBody>
               <Box overflowX="auto">
                 <Table variant="simple" size="sm">
                   <Thead>
                     <Tr>
-                      <Th>User</Th>
+                      {isAdmin() && <Th>User</Th>}
                       <Th>Machine</Th>
                       <Th>Started At</Th>
                       <Th>Status</Th>
@@ -397,16 +425,18 @@ const Dashboard = () => {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {stats.recent_sessions.length === 0 ? (
+                    {filteredSessions.length === 0 ? (
                       <Tr>
-                        <Td colSpan={isAdmin() ? 6 : 5} textAlign="center">No recent sessions found</Td>
+                        <Td colSpan={isAdmin() ? 6 : 4} textAlign="center">
+                          {isAdmin() ? 'No recent sessions found' : 'You have no recent sessions'}
+                        </Td>
                       </Tr>
                     ) : (
-                      stats.recent_sessions.map(session => {
+                      filteredSessions.map(session => {
                         const timeData = calculateTimeRemainingData(session);
                         return (
                           <Tr key={session.id}>
-                            <Td>{session.username}</Td>
+                            {isAdmin() && <Td>{session.username}</Td>}
                             <Td>{session.machine_name}</Td>
                             <Td>{new Date(session.start_time).toLocaleString()}</Td>
                             <Td>

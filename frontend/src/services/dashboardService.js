@@ -1,4 +1,4 @@
-// API service for dashboard statistics
+// API service for dashboard statistics and transactions
 const API_URL = 'http://127.0.0.1:5000/api';
 
 // Helper function to handle API errors
@@ -39,7 +39,7 @@ export const getDashboardStats = async () => {
 };
 
 // Get transaction history
-export const getTransactionHistory = async () => {
+export const getTransactions = async () => {
   const response = await fetch(`${API_URL}/transactions`, {
     method: 'GET',
     headers: {

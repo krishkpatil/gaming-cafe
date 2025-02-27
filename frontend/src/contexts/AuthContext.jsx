@@ -20,9 +20,7 @@ export const AuthProvider = ({ children }) => {
     
     if (token && userData) {
       try {
-        const parsedUser = JSON.parse(userData);
-        console.log("User data from localStorage:", parsedUser);
-        setUser(parsedUser);
+        setUser(JSON.parse(userData));
       } catch (err) {
         console.error('Error parsing user data from localStorage', err);
         logout();
@@ -70,40 +68,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-// Signup function
-const signup = async (userData) => {
-  setError(null);
-  
-  try {
-    const response = await fetch(`${API_URL}/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username: userData.username,
-        password: userData.password,
-        gender: userData.gender || 'male' // Include gender, default to male
-      })
-    });
+  // Signup function
+  const signup = async (userData) => {
+    setError(null);
     
-    const data = await response.json();
-    
-    if (!response.ok) {
-      const error = data.message || 'Signup failed';
-      setError(error);
-      throw new Error(error);
+    try {
+      const response = await fetch(`${API_URL}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = data.message || 'Signup failed';
+        setError(error);
+        throw new Error(error);
+      }
+      
+      // Redirect to login page
+      navigate('/login');
+      
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     }
-    
-    // Redirect to login page
-    navigate('/login');
-    
-    return data;
-  } catch (err) {
-    setError(err.message);
-    throw err;
-  }
-};
+  };
 
   // Logout function
   const logout = () => {
@@ -123,20 +117,14 @@ const signup = async (userData) => {
     return !!user;
   };
 
-  // Check if user is admin - with extra type checking and debugging
+  // Check if user is admin
   const isAdmin = () => {
-    
-    if (!user) {
-      console.log("No user is logged in");
-      return false;
-    }
-    
-    // Handle different types of is_admin values
-    if (typeof user.is_admin === 'string') {
-      return user.is_admin.toLowerCase() === 'true';
-    }
-    
-    return Boolean(user.is_admin);
+    return user && user.is_admin === true;
+  };
+
+  // Check if the logged in user is the same as the specified user ID
+  const isSameUser = (userId) => {
+    return user && user.id === userId;
   };
 
   const value = {
@@ -147,7 +135,8 @@ const signup = async (userData) => {
     signup,
     logout,
     isAuthenticated,
-    isAdmin
+    isAdmin,
+    isSameUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

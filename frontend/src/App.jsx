@@ -12,6 +12,7 @@ import UserManagement from './components/UserManagement';
 import MachineManagement from './components/MachineManagement';
 import SessionManagement from './components/SessionManagement';
 import ErrorBoundary from './components/ErrorBoundary';
+import UserProfile from './components/UserProfile';  // New user profile component
 
 // Protected route component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -57,13 +58,24 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           
-          {/* Protected routes */}
+          {/* Protected routes - accessible by all users */}
           <Route 
             path="/" 
             element={
               <ProtectedRoute>
                 <Layout>
                   <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <UserProfile />
                 </Layout>
               </ProtectedRoute>
             } 

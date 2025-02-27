@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Box,
@@ -7,6 +7,7 @@ import {
   FormControl,
   FormLabel,
   Input,
+  Select,
   VStack,
   Heading,
   Text,
@@ -14,10 +15,7 @@ import {
   AlertIcon,
   Container,
   FormErrorMessage,
-  useToast,
-  RadioGroup,
-  Radio,
-  Stack
+  useToast
 } from '@chakra-ui/react';
 
 const Signup = () => {
@@ -25,12 +23,11 @@ const Signup = () => {
     username: '',
     password: '',
     confirmPassword: '',
-    gender: 'male', // Default to male
+    gender: 'male'
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup, error } = useAuth();
-  const navigate = useNavigate();
   const toast = useToast();
 
   const handleChange = (e) => {
@@ -38,13 +35,6 @@ const Signup = () => {
     setFormData({
       ...formData,
       [name]: value,
-    });
-  };
-
-  const handleGenderChange = (value) => {
-    setFormData({
-      ...formData,
-      gender: value
     });
   };
 
@@ -82,6 +72,7 @@ const Signup = () => {
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...userData } = formData;
       
+      // Note: We're not specifying is_admin here, so it will use the default (true for direct signup)
       await signup(userData);
       
       toast({
@@ -154,13 +145,15 @@ const Signup = () => {
               
               <FormControl>
                 <FormLabel>Gender</FormLabel>
-                <RadioGroup onChange={handleGenderChange} value={formData.gender}>
-                  <Stack direction="row">
-                    <Radio value="male">Male</Radio>
-                    <Radio value="female">Female</Radio>
-                    <Radio value="other">Other</Radio>
-                  </Stack>
-                </RadioGroup>
+                <Select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </Select>
               </FormControl>
               
               <Button

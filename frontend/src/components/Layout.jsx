@@ -21,7 +21,8 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  MenuDivider
+  MenuDivider,
+  Badge
 } from '@chakra-ui/react';
 import {
   HamburgerIcon,
@@ -80,7 +81,7 @@ const Layout = ({ children }) => {
             </Link>
 
             <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
-              <DesktopNav isAdmin={isAdmin} currentPath={location.pathname} />
+              <DesktopNav isAdmin={isAdmin()} currentPath={location.pathname} />
             </Flex>
           </Flex>
 
@@ -92,9 +93,11 @@ const Layout = ({ children }) => {
               spacing={6}
               align="center"
             >
-              <Text fontSize="sm" mr={2}>
-                {user.username}
-              </Text>
+              {user && (
+                <Text display={{ base: 'none', md: 'inline-flex' }} mr={2}>
+                  Balance: <Badge colorScheme="green" ml={1}>${user.balance?.toFixed(2) || '0.00'}</Badge>
+                </Text>
+              )}
               <Menu>
                 <MenuButton
                   as={Button}
@@ -102,25 +105,29 @@ const Layout = ({ children }) => {
                   variant={'link'}
                   cursor={'pointer'}
                   minW={0}
-                  aria-label="User menu"
                 >
                   <Avatar
                     size={'sm'}
-                    name={user.username}
-                    src={user.img_url}
+                    name={user?.username}
+                    src={user?.img_url}
                   />
                 </MenuButton>
                 <MenuList>
                   <MenuItem isDisabled>
-                    <Text fontWeight="bold">@{user.username}</Text>
+                    <Text fontWeight="bold">@{user?.username}</Text>
                   </MenuItem>
                   <MenuItem isDisabled>
                     <Text fontSize="sm" color="gray.500">
-                      {user.is_admin ? 'Administrator' : 'User'}
+                      {user?.is_admin ? 'Administrator' : 'User'}
+                    </Text>
+                  </MenuItem>
+                  <MenuItem isDisabled>
+                    <Text fontSize="sm">
+                      Balance: <strong>${user?.balance?.toFixed(2) || '0.00'}</strong>
                     </Text>
                   </MenuItem>
                   <MenuDivider />
-                  <MenuItem as={Link} to="/profile">Profile</MenuItem>
+                  <MenuItem onClick={() => navigate('/profile')}>My Profile</MenuItem>
                   <MenuItem onClick={logout}>Logout</MenuItem>
                 </MenuList>
               </Menu>
@@ -138,7 +145,6 @@ const Layout = ({ children }) => {
                 fontWeight={400}
                 variant={'link'}
                 to={'/login'}
-                aria-label="Sign In"
               >
                 Sign In
               </Button>
@@ -153,7 +159,6 @@ const Layout = ({ children }) => {
                 _hover={{
                   bg: 'blue.400',
                 }}
-                aria-label="Sign Up"
               >
                 Sign Up
               </Button>
@@ -162,7 +167,7 @@ const Layout = ({ children }) => {
         </Flex>
 
         <Collapse in={isOpen} animateOpacity>
-          <MobileNav isAdmin={isAdmin} currentPath={location.pathname} onClose={() => onToggle()} />
+          <MobileNav isAdmin={isAdmin()} currentPath={location.pathname} onClose={() => onToggle()} />
         </Collapse>
       </Box>
 
@@ -350,6 +355,10 @@ const getNavItems = (isAdmin) => {
     {
       label: 'Dashboard',
       href: '/',
+    },
+    {
+      label: 'My Profile',
+      href: '/profile',
     }
   ];
   

@@ -50,9 +50,22 @@ export const getUserById = async (id) => {
   return handleResponse(response);
 };
 
-// Create a new user
-export const createUser = async (userData) => {
+// Create a new user via signup (self-registration)
+export const signup = async (userData) => {
   const response = await fetch(`${API_URL}/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(userData)
+  });
+  
+  return handleResponse(response);
+};
+
+// Create a new user via admin panel
+export const createUser = async (userData) => {
+  const response = await fetch(`${API_URL}/users/create`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

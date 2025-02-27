@@ -36,10 +36,12 @@ import {
   NumberDecrementStepper,
   ButtonGroup,
   HStack,
-  Avatar
+  Avatar,
+  IconButton,
+  useColorModeValue
 } from '@chakra-ui/react';
-import { AddIcon, EditIcon } from '@chakra-ui/icons';
-import { getAllUsers, addUserBalance } from '../services/userService';
+import { AddIcon, DeleteIcon } from '@chakra-ui/icons';
+import { getAllUsers, addUserBalance, deleteUser } from '../services/userService';
 import CreateUserModal from './CreateUserModal';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -51,8 +53,10 @@ const UserManagement = () => {
   const [balance, setBalance] = useState(0);
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isBalanceOpen, onOpen: onBalanceOpen, onClose: onBalanceClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { user } = useAuth();
   const toast = useToast();
+  const highlightColor = useColorModeValue('red.50', 'red.900');
 
   // Fetch users on component mount
   useEffect(() => {
@@ -101,6 +105,12 @@ const UserManagement = () => {
     onBalanceOpen();
   };
 
+  // Open delete confirmation modal for a user
+  const openDeleteModal = (user) => {
+    setSelectedUser(user);
+    onDeleteOpen();
+  };
+
   // Handle adding balance
   const handleAddBalance = async () => {
     if (!selectedUser || balance <= 0) {
@@ -139,6 +149,49 @@ const UserManagement = () => {
       });
 
       onBalanceClose();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err.toString(),
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Handle delete user
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      // Don't allow deleting yourself
+      if (selectedUser.id === user.id) {
+        toast({
+          title: 'Cannot delete own account',
+          description: 'You cannot delete your own account',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        onDeleteClose();
+        return;
+      }
+
+      await deleteUser(selectedUser.id);
+      
+      // Remove user from list
+      setUsers(users.filter(u => u.id !== selectedUser.id));
+      
+      toast({
+        title: 'User deleted',
+        description: `${selectedUser.username} has been deleted successfully`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      onDeleteClose();
     } catch (err) {
       toast({
         title: 'Error',
@@ -200,28 +253,40 @@ const UserManagement = () => {
                   <Td colSpan={5} textAlign="center">No users found</Td>
                 </Tr>
               ) : (
-                users.map(user => (
-                  <Tr key={user.id}>
-                    <Td>{user.id}</Td>
+                users.map(userItem => (
+                  <Tr 
+                    key={userItem.id}
+                    bg={userItem.id === user.id ? highlightColor : ""}
+                  >
+                    <Td>{userItem.id}</Td>
                     <Td>
                       <Flex alignItems="center">
-                        {user.img_url && (
-                          <Avatar size="sm" src={user.img_url} mr={2} />
+                        {userItem.img_url && (
+                          <Avatar size="sm" src={userItem.img_url} mr={2} />
                         )}
-                        {user.username}
+                        {userItem.username}
                       </Flex>
                     </Td>
-                    <Td>{user.is_admin ? 'Admin' : 'User'}</Td>
-                    <Td isNumeric>${(user.balance || 0).toFixed(2)}</Td>
+                    <Td>{userItem.is_admin ? 'Admin' : 'User'}</Td>
+                    <Td isNumeric>${(userItem.balance || 0).toFixed(2)}</Td>
                     <Td>
-                      <Button
-                        size="sm"
-                        colorScheme="green"
-                        mr={2}
-                        onClick={() => openBalanceModal(user)}
-                      >
-                        Add Funds
-                      </Button>
+                      <HStack>
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          onClick={() => openBalanceModal(userItem)}
+                        >
+                          Add Funds
+                        </Button>
+                        <IconButton
+                          size="sm"
+                          colorScheme="red"
+                          icon={<DeleteIcon />}
+                          onClick={() => openDeleteModal(userItem)}
+                          aria-label="Delete user"
+                          isDisabled={userItem.id === user.id} // Can't delete yourself
+                        />
+                      </HStack>
                     </Td>
                   </Tr>
                 ))
@@ -307,6 +372,43 @@ const UserManagement = () => {
               onClick={handleAddBalance}
             >
               Add Balance
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete User Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Delete User</ModalHeader>
+          <ModalCloseButton />
+          
+          <ModalBody>
+            {selectedUser && (
+              <>
+                <Text mb={4}>
+                  Are you sure you want to delete <strong>{selectedUser.username}</strong>?
+                </Text>
+                <Text fontWeight="bold" color="red.500">
+                  This action cannot be undone.
+                </Text>
+                <Text mt={2}>
+                  All of this user's data, including session history, will be permanently removed.
+                </Text>
+              </>
+            )}
+          </ModalBody>
+          
+          <ModalFooter>
+            <Button variant="outline" mr={3} onClick={onDeleteClose}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={handleDeleteUser}
+            >
+              Delete User
             </Button>
           </ModalFooter>
         </ModalContent>

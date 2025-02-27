@@ -90,3 +90,15 @@ export const addUserBalance = async (userId, balanceData) => {
   
   return handleResponse(response);
 };
+
+// Delete a user
+export const deleteUser = async (userId) => {
+  const response = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeader()
+    }
+  });
+  
+  return handleResponse(response);
+};

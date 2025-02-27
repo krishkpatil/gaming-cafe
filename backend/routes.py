@@ -174,6 +174,54 @@ def add_balance(id):
         db.session.rollback()
         return jsonify({'message': f'Error adding balance: {str(e)}'}), 500
 
+@app.route('/api/users/<int:id>', methods=['DELETE'])
+@jwt_required()
+@admin_required()
+def delete_user(id):
+    try:
+        # Get current user ID to prevent self-deletion
+        current_user_id = get_jwt_identity()
+        
+        # Check if trying to delete own account
+        if int(current_user_id) == id:
+            return jsonify({'message': 'You cannot delete your own account'}), 400
+        
+        # Find the user to delete
+        user = User.query.get(id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        # End all active sessions for this user
+        active_sessions = Session.query.filter_by(user_id=id, is_active=True).all()
+        
+        for session in active_sessions:
+            # Get the machine
+            machine = Machine.query.get(session.machine_id)
+            
+            # End the session
+            session.is_active = False
+            session.end_time = datetime.utcnow()
+            
+            # Update machine status
+            if machine:
+                machine.status = 'Available'
+        
+        # Delete transactions
+        Transaction.query.filter_by(user_id=id).delete()
+        
+        # Delete all sessions
+        Session.query.filter_by(user_id=id).delete()
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({'message': 'User deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error deleting user: {str(e)}'}), 500
+
 # Machine routes
 @app.route('/api/machines', methods=['GET'])
 @jwt_required()
